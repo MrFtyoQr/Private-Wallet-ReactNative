@@ -51,8 +51,10 @@ app.use('/api/investments', investmentRoute);
 app.use('/api/payments', paymentsRoute);
 
 initDB().then(() => {
-  const server = app.listen(PORT, () => {
-    console.log('Server is up and running on PORT:', PORT);
+  const HOST = process.env.HOST || '0.0.0.0'; // Escuchar en todas las interfaces para permitir conexiones desde dispositivos en la red local
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`🚀 Server is up and running on http://${HOST}:${PORT}`);
+    console.log(`📱 Accesible desde dispositivos en la red local: http://172.20.10.5:${PORT}`);
   });
 
   server.on('error', (err) => {

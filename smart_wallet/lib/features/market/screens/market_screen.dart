@@ -99,7 +99,9 @@ class _MarketScreenState extends State<MarketScreen> {
       print('❌ Error cargando market data: $e');
       if (mounted) {
         setState(() {
-          _marketData = MarketDataModel.sampleMarket();
+          _marketData = [];
+          _cryptoData = [];
+          _stocksData = [];
           _isLoading = false;
         });
       }

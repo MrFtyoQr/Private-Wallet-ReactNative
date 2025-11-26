@@ -22,7 +22,7 @@ class GoalCard extends StatelessWidget {
             children: [
               Text(goal.title, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              ProgressBar(progress: goal.progress),
+              ProgressBar(progress: goal.progress ?? goal.calculatedProgress),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -32,7 +32,9 @@ class GoalCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Text('Fecha objetivo: ${goal.deadline.day}/${goal.deadline.month}/${goal.deadline.year}'),
+              Text(
+                'Fecha objetivo: ${goal.deadline.day}/${goal.deadline.month}/${goal.deadline.year}',
+              ),
             ],
           ),
         ),
@@ -40,4 +42,3 @@ class GoalCard extends StatelessWidget {
     );
   }
 }
-

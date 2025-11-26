@@ -192,6 +192,10 @@ class ApiService {
     return await _dio.get('/market/analysis');
   }
 
+  Future<Response> getPersonalizedAnalysis() async {
+    return await _dio.get('/market/personalized-analysis');
+  }
+
   // Analytics endpoints
   Future<Response> getDashboardSummary() async {
     return await _dio.get('/analytics/dashboard');
@@ -219,6 +223,14 @@ class ApiService {
 
   Future<Response> markReminderComplete(String id) async {
     return await _dio.put('/reminders/$id/complete');
+  }
+
+  Future<Response> updateReminder(String id, Map<String, dynamic> reminder) async {
+    return await _dio.put('/reminders/$id', data: reminder);
+  }
+
+  Future<Response> deleteReminder(String id) async {
+    return await _dio.delete('/reminders/$id');
   }
 
   Future<Response> getUpcomingReminders() async {

@@ -46,39 +46,59 @@ class AuthService extends ChangeNotifier {
     _errorMessage = null;
 
     try {
+      print('🔐 Intentando login con userId: $userId');
+      
       final response = await _apiService.login(userId, password);
 
+      print('📥 Respuesta recibida - Status: ${response.statusCode}');
+      print('📦 Response data: ${response.data}');
+
       if (response.statusCode == 200) {
-        final data = response.data['data'];
+        // Verificar que response.data tenga la estructura correcta
+        if (response.data is Map && response.data.containsKey('data')) {
+          final data = response.data['data'];
 
-        final accessToken = data['accessToken'];
-        final refreshToken = data['refreshToken'];
-        final userData = data['user'];
+          final accessToken = data['accessToken'];
+          final refreshToken = data['refreshToken'];
+          final userData = data['user'];
 
-        // Save tokens securely
-        await StorageService.saveToken(accessToken);
-        await StorageService.saveRefreshToken(refreshToken);
-        // Usar el userId del parámetro (sin espacios) en lugar del que viene del backend
-        await StorageService.saveUserId(userId);
-        await StorageService.saveSubscriptionType(userData['subscriptionType']);
+          print('✅ Tokens obtenidos correctamente');
 
-        // Update state
-        _accessToken = accessToken;
-        _user = UserModel(
-          id: userId, // Usar el userId del parámetro
-          name:
-              userData['userId'] ??
-              userId, // Mostrar el nombre del backend si existe
-          email: userData['email'] ?? userId,
-          subscriptionPlan: userData['subscriptionType'],
-        );
+          // Save tokens securely
+          await StorageService.saveToken(accessToken);
+          await StorageService.saveRefreshToken(refreshToken);
+          // Usar el userId del parámetro (sin espacios) en lugar del que viene del backend
+          await StorageService.saveUserId(userId);
+          await StorageService.saveSubscriptionType(userData['subscriptionType']);
 
-        notifyListeners();
-        return true;
+          // Update state
+          _accessToken = accessToken;
+          _user = UserModel(
+            id: userId, // Usar el userId del parámetro
+            name:
+                userData['userId'] ??
+                userId, // Mostrar el nombre del backend si existe
+            email: userData['email'] ?? userId,
+            subscriptionPlan: userData['subscriptionType'],
+          );
+
+          print('✅ Login exitoso - Usuario: $userId');
+          notifyListeners();
+          return true;
+        } else {
+          print('❌ Error: response.data no tiene la estructura esperada');
+          _errorMessage = 'Error en el formato de respuesta';
+          notifyListeners();
+          return false;
+        }
       }
 
+      print('❌ Error: statusCode no es 200');
+      _errorMessage = 'Error al iniciar sesión';
+      notifyListeners();
       return false;
     } on DioException catch (e) {
+      print('❌ DioException: ${e.message}');
       if (e.response != null) {
         _errorMessage =
             e.response?.data['message'] ?? 'Error al iniciar sesión';
@@ -88,7 +108,8 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (error) {
-      _errorMessage = 'No se pudo iniciar sesión';
+      print('❌ Error general: $error');
+      _errorMessage = 'No se pudo iniciar sesión: $error';
       notifyListeners();
       return false;
     } finally {

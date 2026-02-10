@@ -73,11 +73,9 @@ class _AuthFormState extends State<AuthForm> {
         ),
       );
 
-      // Navegación automática después del registro exitoso
-      if (widget.type == AuthFormType.register) {
-        // Navegar al dashboard después del registro
-        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-      }
+      // Navegación automática después del login o registro exitoso
+      // Usar AuthGate para que maneje la navegación según el estado de autenticación
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     } else if (auth.errorMessage != null) {
       messenger.showSnackBar(SnackBar(content: Text(auth.errorMessage!)));
     }

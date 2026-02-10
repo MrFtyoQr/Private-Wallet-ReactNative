@@ -1,6 +1,10 @@
 import 'dart:io';
 
 class ApiConstants {
+  // 🎭 MODO DUMMY (Datos simulados sin backend)
+  // Cambia a true para usar datos dummy sin conexión al backend
+  static const bool useDummyData = true; // ⬅️ Cambia a false para usar backend real
+
   // 🌐 CONFIGURACIÓN NGROK (Túnel público)
   // Si usas ngrok, pega aquí la URL que te da (ej: https://abc123.ngrok-free.app)
   // Deja vacío para usar IP local

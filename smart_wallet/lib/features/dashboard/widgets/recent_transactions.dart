@@ -23,6 +23,15 @@ class _RecentTransactionsState extends State<RecentTransactions> {
     _loadTransactions();
   }
 
+  @override
+  void didUpdateWidget(RecentTransactions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recargar cuando cambia la key del widget
+    if (widget.key != oldWidget.key) {
+      _loadTransactions();
+    }
+  }
+
   Future<void> _loadTransactions() async {
     final auth = context.read<AuthService>();
     final userId = auth.currentUser?.id;

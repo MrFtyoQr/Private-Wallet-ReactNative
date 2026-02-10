@@ -1,11 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:smart_wallet/core/constants/api_constants.dart';
+import 'package:smart_wallet/core/services/dummy_data_service.dart';
 import 'package:smart_wallet/core/services/storage_service.dart';
 
 class ApiService {
   late final Dio _dio;
+  final DummyDataService _dummyService = DummyDataService();
 
   ApiService() {
+    // Inicializar datos dummy si está habilitado (async, se ejecuta en background)
+    if (ApiConstants.useDummyData) {
+      _dummyService.initialize().then((_) {
+        print('🎭 Modo DUMMY activado - Base de datos SQLite lista');
+      });
+    }
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.baseUrl,
@@ -90,8 +98,24 @@ class ApiService {
     }
   }
 
+  // Helper para crear Response desde datos dummy
+  Response _createDummyResponse(Map<String, dynamic> data) {
+    return Response(
+      requestOptions: RequestOptions(path: ''),
+      statusCode: data['statusCode'] ?? 200,
+      data: data, // Devolver data completo para que AuthService pueda acceder a data['data']
+    );
+  }
+
   // Auth endpoints
   Future<Response> login(String userId, String password) async {
+    if (ApiConstants.useDummyData) {
+      print('🎭 Modo DUMMY activado - Usando datos simulados para login');
+      await Future.delayed(const Duration(milliseconds: 500)); // Simular delay de red
+      final data = _dummyService.login(userId, password);
+      print('🎭 Respuesta dummy generada: ${data['statusCode']}');
+      return _createDummyResponse(data);
+    }
     return await _dio.post(
       '/auth/login',
       data: {'user_id': userId, 'password': password},
@@ -103,6 +127,11 @@ class ApiService {
     String email,
     String password,
   ) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.register(userId, email, password);
+      return _createDummyResponse(data);
+    }
     return await _dio.post(
       '/auth/register',
       data: {'user_id': userId, 'email': email, 'password': password},
@@ -110,6 +139,10 @@ class ApiService {
   }
 
   Future<Response> refreshToken(String refreshToken) async {
+    if (ApiConstants.useDummyData) {
+      final data = _dummyService.refreshToken(refreshToken);
+      return _createDummyResponse(data);
+    }
     return await _dio.post(
       '/auth/refresh',
       data: {'refreshToken': refreshToken},
@@ -118,11 +151,21 @@ class ApiService {
 
   // Transactions endpoints
   Future<Response> getTransactions(String userId) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getTransactions();
+      return _createDummyResponse(data);
+    }
     // Backend usa el userId del JWT automáticamente, no necesita pasarlo en URL
     return await _dio.get('/transactions');
   }
 
   Future<Response> createTransaction(Map<String, dynamic> transaction) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.createTransaction(transaction);
+      return _createDummyResponse(data);
+    }
     return await _dio.post('/transactions', data: transaction);
   }
 
@@ -130,20 +173,40 @@ class ApiService {
     String id,
     Map<String, dynamic> transaction,
   ) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.updateTransaction(id, transaction);
+      return _createDummyResponse(data);
+    }
     return await _dio.put('/transactions/$id', data: transaction);
   }
 
   Future<Response> deleteTransaction(String id) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.deleteTransaction(id);
+      return _createDummyResponse(data);
+    }
     return await _dio.delete('/transactions/$id');
   }
 
   Future<Response> getSummary(String userId) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getSummary();
+      return _createDummyResponse(data);
+    }
     // Backend usa el userId del JWT automáticamente, no necesita pasarlo en URL
     return await _dio.get('/transactions/summary');
   }
 
   // AI endpoints
   Future<Response> chatWithAI(String message, {String? conversationId}) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.chatWithAI(message, conversationId: conversationId);
+      return _createDummyResponse(data);
+    }
     return await _dio.post(
       '/ai/chat',
       data: {'message': message, 'conversationId': conversationId},
@@ -151,57 +214,122 @@ class ApiService {
   }
 
   Future<Response> getConversations() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = _dummyService.getConversations();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/ai/conversations');
   }
 
   Future<Response> getFinancialAnalysis() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.getFinancialAnalysis();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/ai/analysis');
   }
 
   // Goals endpoints
   Future<Response> getGoals() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getGoals();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/goals');
   }
 
   Future<Response> createGoal(Map<String, dynamic> goal) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.createGoal(goal);
+      return _createDummyResponse(data);
+    }
     return await _dio.post('/goals', data: goal);
   }
 
   Future<Response> updateGoal(String id, Map<String, dynamic> goal) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.updateGoal(id, goal);
+      return _createDummyResponse(data);
+    }
     return await _dio.put('/goals/$id', data: goal);
   }
 
   Future<Response> deleteGoal(String id) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.deleteGoal(id);
+      return _createDummyResponse(data);
+    }
     return await _dio.delete('/goals/$id');
   }
 
   Future<Response> getGoalPlan(String id) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getGoalPlan(id);
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/goals/$id/plan');
   }
 
   // Market endpoints
   Future<Response> getCryptoData() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = _dummyService.getCryptoData();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/market/crypto');
   }
 
   Future<Response> getStocksData() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = _dummyService.getStocksData();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/market/stocks');
   }
 
   Future<Response> getMarketAnalysis() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.getMarketAnalysis();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/market/analysis');
   }
 
   Future<Response> getPersonalizedAnalysis() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.getPersonalizedAnalysis();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/market/personalized-analysis');
   }
 
   // Analytics endpoints
   Future<Response> getDashboardSummary() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getDashboardSummary();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/analytics/dashboard');
   }
 
   Future<Response> getTrends(String period) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = _dummyService.getTrends(period);
+      return _createDummyResponse(data);
+    }
     return await _dio.get(
       '/analytics/trends',
       queryParameters: {'period': period},
@@ -209,66 +337,141 @@ class ApiService {
   }
 
   Future<Response> getCategoriesAnalysis() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getCategoriesAnalysis();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/analytics/categories');
   }
 
   // Reminders endpoints
   Future<Response> getReminders() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getReminders();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/reminders');
   }
 
   Future<Response> createReminder(Map<String, dynamic> reminder) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.createReminder(reminder);
+      return _createDummyResponse(data);
+    }
     return await _dio.post('/reminders', data: reminder);
   }
 
   Future<Response> markReminderComplete(String id) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.markReminderComplete(id);
+      return _createDummyResponse(data);
+    }
     return await _dio.put('/reminders/$id/complete');
   }
 
   Future<Response> updateReminder(String id, Map<String, dynamic> reminder) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.updateReminder(id, reminder);
+      return _createDummyResponse(data);
+    }
     return await _dio.put('/reminders/$id', data: reminder);
   }
 
   Future<Response> deleteReminder(String id) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.deleteReminder(id);
+      return _createDummyResponse(data);
+    }
     return await _dio.delete('/reminders/$id');
   }
 
   Future<Response> getUpcomingReminders() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getUpcomingReminders();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/reminders/upcoming');
   }
 
   // Investment endpoints
   Future<Response> getInvestmentAnalysis() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.getInvestmentAnalysis();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/investments/analysis');
   }
 
   Future<Response> getPersonalizedRecommendation() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.getPersonalizedRecommendation();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/investments/recommendation');
   }
 
   Future<Response> getPortfolio() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = _dummyService.getPortfolio();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/investments/portfolio');
   }
 
   // Payments endpoints
   Future<Response> createPayment(Map<String, dynamic> payment) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = _dummyService.createPayment(payment);
+      return _createDummyResponse(data);
+    }
     return await _dio.post('/payments/create', data: payment);
   }
 
   Future<Response> confirmPayment(Map<String, dynamic> payment) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = _dummyService.confirmPayment(payment);
+      return _createDummyResponse(data);
+    }
     return await _dio.post('/payments/confirm', data: payment);
   }
 
   Future<Response> getPaymentHistory() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = _dummyService.getPaymentHistory();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/payments/history');
   }
 
   Future<Response> getSubscriptionInfo() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = _dummyService.getSubscriptionInfo();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/payments/subscription');
   }
 
   // Users endpoints
   Future<Response> getAIUsage() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = _dummyService.getAIUsage();
+      return _createDummyResponse(data);
+    }
     return await _dio.get('/users/usage');
   }
 }

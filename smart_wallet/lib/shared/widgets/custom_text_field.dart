@@ -9,6 +9,9 @@ class CustomTextField extends StatefulWidget {
     this.obscureText = false,
     this.validator,
     this.showPasswordToggle = false,
+    this.readOnly = false,
+    this.onTap,
+    this.maxLines = 1,
   });
 
   final TextEditingController controller;
@@ -17,6 +20,9 @@ class CustomTextField extends StatefulWidget {
   final bool obscureText;
   final String? Function(String?)? validator;
   final bool showPasswordToggle;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final int maxLines;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -38,6 +44,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
       keyboardType: widget.keyboardType,
       obscureText: _obscureText,
       validator: widget.validator,
+      readOnly: widget.readOnly,
+      onTap: widget.onTap,
+      maxLines: widget.maxLines,
       decoration: InputDecoration(
         labelText: widget.label,
         suffixIcon: widget.showPasswordToggle

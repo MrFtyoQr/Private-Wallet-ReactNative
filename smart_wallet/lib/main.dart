@@ -5,6 +5,7 @@ import 'package:smart_wallet/core/constants/app_constants.dart';
 import 'package:smart_wallet/core/models/goal_model.dart';
 import 'package:smart_wallet/core/models/transaction_model.dart';
 import 'package:smart_wallet/core/services/auth_service.dart';
+import 'package:smart_wallet/core/services/local_database_service.dart';
 import 'package:smart_wallet/core/services/payment_service.dart';
 import 'package:smart_wallet/core/services/theme_service.dart';
 import 'package:smart_wallet/features/ai_chat/screens/ai_chat_screen.dart';
@@ -31,7 +32,11 @@ import 'package:smart_wallet/features/transactions/screens/transaction_detail_sc
 import 'package:smart_wallet/features/transactions/screens/transactions_screen.dart';
 import 'package:smart_wallet/shared/theme/app_theme.dart';
 
-void main() {
+void main() async {
+  // Inicializar el databaseFactory para Windows/Desktop antes de cualquier otra cosa
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalDatabaseService.initializeDatabaseFactory();
+
   runApp(
     MultiProvider(
       providers: [

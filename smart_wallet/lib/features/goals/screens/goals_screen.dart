@@ -35,22 +35,54 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     try {
       final response = await _apiService.getGoals();
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final goalsData = response.data['data']['goals'] as List<dynamic>;
+      print('📊 Respuesta de metas: ${response.statusCode}');
+      print('📦 Data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        // Formato dummy: {'statusCode': 200, 'data': [...]}
+        // O backend: {'success': true, 'data': {'goals': [...]}}
+        dynamic goalsData;
+
+        if (response.data['data'] != null) {
+          if (response.data['data'] is List) {
+            // Formato dummy directo
+            goalsData = response.data['data'] as List<dynamic>;
+          } else if (response.data['data']['goals'] != null) {
+            // Formato backend con 'goals'
+            goalsData = response.data['data']['goals'] as List<dynamic>;
+          } else {
+            goalsData = [];
+          }
+        } else {
+          goalsData = [];
+        }
+
+        print('✅ Metas parseadas: ${goalsData.length}');
+
         setState(() {
           _goals = goalsData
-              .map((json) => GoalModel.fromJson(json as Map<String, dynamic>))
+              .map((json) {
+                try {
+                  return GoalModel.fromJson(json as Map<String, dynamic>);
+                } catch (e) {
+                  print('❌ Error parseando meta: $e');
+                  print('📄 JSON: $json');
+                  return null;
+                }
+              })
+              .whereType<GoalModel>()
               .toList();
           _isLoading = false;
         });
       } else {
         setState(() {
-          _errorMessage = 'Error al cargar las metas';
+          _errorMessage =
+              'Error al cargar las metas (status: ${response.statusCode})';
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('Error cargando metas: $e');
+      print('❌ Error cargando metas: $e');
       setState(() {
         _errorMessage = 'Error de conexión. Intenta nuevamente.';
         _isLoading = false;
@@ -64,81 +96,83 @@ class _GoalsScreenState extends State<GoalsScreen> {
       appBar: AppBar(
         title: const Text('Metas'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadGoals,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadGoals),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _errorMessage!,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadGoals,
-                        child: const Text('Reintentar'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _errorMessage!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
                   ),
-                )
-              : _goals.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.flag_outlined,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No tienes metas aún',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Crea tu primera meta para empezar',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _loadGoals,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _goals.length,
-                        itemBuilder: (context, index) {
-                          final goal = _goals[index];
-                          return GoalCard(
-                            goal: goal,
-                            onTap: () async {
-                              final result = await Navigator.pushNamed(
-                                context,
-                                GoalDetailScreen.routeName,
-                                arguments: goal,
-                              );
-                              if (result == true) {
-                                _loadGoals();
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadGoals,
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              ),
+            )
+          : _goals.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 64,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No tienes metas aún',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Crea tu primera meta para empezar',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadGoals,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _goals.length,
+                itemBuilder: (context, index) {
+                  final goal = _goals[index];
+                  return GoalCard(
+                    goal: goal,
+                    onTap: () async {
+                      final result = await Navigator.pushNamed(
+                        context,
+                        GoalDetailScreen.routeName,
+                        arguments: goal,
+                      );
+                      if (result == true) {
+                        _loadGoals();
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final result = await Navigator.pushNamed(context, AddGoalScreen.routeName);
+          final result = await Navigator.pushNamed(
+            context,
+            AddGoalScreen.routeName,
+          );
           if (result == true) {
             _loadGoals();
           }
@@ -149,4 +183,3 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
   }
 }
-

@@ -41,63 +41,60 @@ class _AiChatScreenState extends State<AiChatScreen> {
     try {
       // Cargar uso de IA
       final usageResponse = await _apiService.getAIUsage();
-      if (usageResponse.statusCode == 200 && usageResponse.data['success'] == true) {
-        final usageData = usageResponse.data['data'];
+      if (usageResponse.statusCode == 200) {
+        // Formato dummy: {'statusCode': 200, 'data': {...}}
+        final usageData = usageResponse.data['data'] ?? usageResponse.data;
         setState(() {
-          _used = usageData['ai_questions_used'] ?? 0;
-          _limit = usageData['subscription_type'] == 'premium' ? 999999 : 3;
+          _used = usageData['used'] ?? 0;
+          _limit = usageData['limit'] ?? 10;
         });
       }
 
-      // Cargar conversaciones previas
+      // Cargar conversaciones previas (en modo dummy siempre está vacío)
       final conversationsResponse = await _apiService.getConversations();
-      if (conversationsResponse.statusCode == 200 && 
-          conversationsResponse.data['success'] == true) {
-        final conversations = conversationsResponse.data['data']['conversations'] as List<dynamic>?;
-        if (conversations != null && conversations.isNotEmpty) {
-          // Cargar la última conversación
+      if (conversationsResponse.statusCode == 200) {
+        final conversationsData = conversationsResponse.data['data'] ?? [];
+        if (conversationsData is List && conversationsData.isNotEmpty) {
+          // Si hay conversaciones (no en modo dummy)
+          final conversations = conversationsData;
           final lastConv = conversations.first;
-          _conversationId = lastConv['conversation_id'];
-          
-          // Cargar mensajes de la conversación
+          _conversationId = lastConv['conversation_id'] ?? lastConv['id'];
+
           final messages = lastConv['messages'] as List<dynamic>?;
-          if (messages != null) {
+          if (messages != null && messages.isNotEmpty) {
             setState(() {
-              _messages.addAll(messages.map((msg) => _Message(
-                text: msg['message'] ?? '',
-                isUser: true,
-              )));
-              _messages.addAll(messages.map((msg) => _Message(
-                text: msg['response'] ?? '',
-                isUser: false,
-              )));
+              for (var msg in messages) {
+                if (msg['message'] != null) {
+                  _messages.add(_Message(text: msg['message'], isUser: true));
+                }
+                if (msg['response'] != null) {
+                  _messages.add(_Message(text: msg['response'], isUser: false));
+                }
+              }
             });
+            return; // Ya cargamos mensajes, no mostrar bienvenida
           }
-        } else {
-          // Mensaje de bienvenida si no hay conversaciones
-          setState(() {
-            _messages.add(const _Message(
-              text: 'Hola, soy tu asistente financiero. ¿En qué te puedo ayudar?',
-              isUser: false,
-            ));
-          });
         }
-      } else {
-        // Mensaje de bienvenida por defecto
-        setState(() {
-          _messages.add(const _Message(
+      }
+
+      // Mensaje de bienvenida por defecto
+      setState(() {
+        _messages.add(
+          const _Message(
             text: 'Hola, soy tu asistente financiero. ¿En qué te puedo ayudar?',
             isUser: false,
-          ));
-        });
-      }
+          ),
+        );
+      });
     } catch (e) {
       print('Error inicializando chat: $e');
       setState(() {
-        _messages.add(const _Message(
-          text: 'Hola, soy tu asistente financiero. ¿En qué te puedo ayudar?',
-          isUser: false,
-        ));
+        _messages.add(
+          const _Message(
+            text: 'Hola, soy tu asistente financiero. ¿En qué te puedo ayudar?',
+            isUser: false,
+          ),
+        );
       });
     } finally {
       setState(() => _isInitializing = false);
@@ -106,7 +103,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Future<void> _sendMessage() async {
     if (_controller.text.trim().isEmpty || _isLoading) return;
-    
+
     final text = _controller.text.trim();
     setState(() {
       _messages.add(_Message(text: text, isUser: true));
@@ -122,42 +119,52 @@ class _AiChatScreenState extends State<AiChatScreen> {
         conversationId: _conversationId,
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final data = response.data['data'];
+      if (response.statusCode == 200) {
+        // Formato dummy: {'statusCode': 200, 'data': {...}}
+        final data = response.data['data'] ?? response.data;
         setState(() {
-          _messages.add(_Message(
-            text: data['response'] ?? 'Lo siento, no pude procesar tu mensaje.',
-            isUser: false,
-          ));
-          _conversationId = data['conversationId'];
+          _messages.add(
+            _Message(
+              text:
+                  data['response'] ?? 'Lo siento, no pude procesar tu mensaje.',
+              isUser: false,
+            ),
+          );
+          _conversationId = data['conversationId'] ?? _conversationId;
           _used++;
           _isLoading = false;
         });
-        
+
         // Actualizar uso
         final usageResponse = await _apiService.getAIUsage();
-        if (usageResponse.statusCode == 200 && usageResponse.data['success'] == true) {
-          final usageData = usageResponse.data['data'];
+        if (usageResponse.statusCode == 200) {
+          final usageData = usageResponse.data['data'] ?? usageResponse.data;
           setState(() {
-            _used = usageData['ai_questions_used'] ?? _used;
+            _used = usageData['used'] ?? _used;
+            _limit = usageData['limit'] ?? 10;
           });
         }
       } else {
         setState(() {
-          _messages.add(_Message(
-            text: 'Error al procesar tu mensaje. Intenta nuevamente.',
-            isUser: false,
-          ));
+          _messages.add(
+            _Message(
+              text: 'Error al procesar tu mensaje. Intenta nuevamente.',
+              isUser: false,
+            ),
+          );
           _isLoading = false;
         });
       }
     } catch (e) {
       print('Error enviando mensaje: $e');
       setState(() {
-        _messages.add(_Message(
-          text: 'Error de conexión. Verifica tu internet e intenta nuevamente.',
-          isUser: false,
-        ));
+        _messages.add(
+          _Message(
+            text:
+                'Error de conexión. Verifica tu internet e intenta nuevamente.',
+            isUser: false,
+          ),
+        );
         _isLoading = false;
       });
     }
@@ -236,7 +243,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   );
                 }
                 final message = _messages[index];
-                return ChatBubble(message: message.text, isUser: message.isUser);
+                return ChatBubble(
+                  message: message.text,
+                  isUser: message.isUser,
+                );
               },
             ),
           ),
@@ -251,7 +261,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       controller: _controller,
                       enabled: canSend && !_isLoading,
                       decoration: InputDecoration(
-                        hintText: canSend ? 'Escribe tu pregunta' : 'Límite alcanzado',
+                        hintText: canSend
+                            ? 'Escribe tu pregunta'
+                            : 'Límite alcanzado',
                       ),
                       onSubmitted: canSend ? (_) => _sendMessage() : null,
                     ),
@@ -276,5 +288,3 @@ class _Message {
   final String text;
   final bool isUser;
 }
-
-

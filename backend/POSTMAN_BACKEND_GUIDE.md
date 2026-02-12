@@ -135,6 +135,41 @@ Si usas variables de Postman:
 
 ---
 
+## 5.1. Recuperar contraseña (`POST /api/auth/forgot-password`)
+
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/auth/forgot-password`  
+- **Headers**: `Content-Type: application/json`
+- **Body (raw / JSON)**:
+
+```json
+{
+  "email": "user_test@example.com"
+}
+```
+
+Respuesta esperada: `200` con mensaje genérico (por seguridad no se indica si el correo existe). En desarrollo (`NODE_ENV !== production`) la respuesta puede incluir `data.token` para pruebas.
+
+---
+
+## 5.2. Restablecer contraseña (`POST /api/auth/reset-password`)
+
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/auth/reset-password`  
+- **Headers**: `Content-Type: application/json`
+- **Body (raw / JSON)**:
+
+```json
+{
+  "token": "EL_TOKEN_RECIBIDO_POR_CORREO_O_DEV",
+  "newPassword": "NuevaPassword123"
+}
+```
+
+Respuesta esperada: `200` con mensaje de éxito. Si el token expiró o es inválido: `400`.
+
+---
+
 ## 6. Paso 4 – Probar primera ruta protegida (`GET /api/users/profile`)
 
 - **Method**: `GET`  

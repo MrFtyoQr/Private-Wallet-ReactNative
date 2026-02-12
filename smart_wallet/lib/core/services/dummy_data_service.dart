@@ -81,6 +81,21 @@ class DummyDataService {
     };
   }
 
+  Map<String, dynamic> forgotPassword(String email) {
+    return {
+      'statusCode': 200,
+      'message': 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.',
+      'data': {'token': 'dummy_reset_token_${DateTime.now().millisecondsSinceEpoch}'},
+    };
+  }
+
+  Map<String, dynamic> resetPassword(String token, String newPassword) {
+    return {
+      'statusCode': 200,
+      'message': 'Contraseña actualizada. Ya puedes iniciar sesión.',
+    };
+  }
+
   // Transactions endpoints - Ahora usan SQLite
   Future<Map<String, dynamic>> getTransactions() async {
     final transactions = await _db.getAllTransactions();

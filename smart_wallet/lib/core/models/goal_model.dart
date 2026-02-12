@@ -23,21 +23,36 @@ class GoalModel {
   final int? daysRemaining;
   final bool? isOverdue;
 
-  double get calculatedProgress => targetAmount > 0 ? (currentAmount / targetAmount) : 0.0;
+  double get calculatedProgress =>
+      targetAmount > 0 ? (currentAmount / targetAmount) : 0.0;
+
+  /// 🔥 Función segura para convertir cualquier valor a double
+  static double _parseToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    return double.parse(value.toString());
+  }
+
+  /// 🔥 Función segura para convertir cualquier valor a int
+  static int? _parseToInt(dynamic value) {
+    if (value == null) return null;
+    return int.parse(value.toString());
+  }
 
   factory GoalModel.fromJson(Map<String, dynamic> json) {
     return GoalModel(
       id: json['id'].toString(),
       title: json['title'] ?? '',
-      targetAmount: (json['target_amount'] ?? 0).toDouble(),
-      currentAmount: (json['current_amount'] ?? 0).toDouble(),
-      deadline: json['deadline'] != null 
+      targetAmount: _parseToDouble(json['target_amount']),
+      currentAmount: _parseToDouble(json['current_amount']),
+      deadline: json['deadline'] != null
           ? DateTime.parse(json['deadline'].toString())
           : DateTime.now(),
       description: json['description'],
       status: json['status'],
-      progress: json['progress'] != null ? (json['progress'] as num).toDouble() : null,
-      daysRemaining: json['daysRemaining'] != null ? json['daysRemaining'] as int : null,
+      progress: json['progress'] != null
+          ? _parseToDouble(json['progress'])
+          : null,
+      daysRemaining: _parseToInt(json['daysRemaining']),
       isOverdue: json['isOverdue'] as bool?,
     );
   }

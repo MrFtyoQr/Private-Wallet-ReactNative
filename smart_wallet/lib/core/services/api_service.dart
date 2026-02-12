@@ -17,8 +17,8 @@ class ApiService {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
         headers: {'Content-Type': 'application/json'},
       ),
     );
@@ -146,6 +146,32 @@ class ApiService {
     return await _dio.post(
       '/auth/refresh',
       data: {'refreshToken': refreshToken},
+    );
+  }
+
+  /// Solicitar recuperación de contraseña. Envía email con token (backend) o devuelve token en dev.
+  Future<Response> forgotPassword(String email) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.forgotPassword(email);
+      return _createDummyResponse(data);
+    }
+    return await _dio.post(
+      '/auth/forgot-password',
+      data: {'email': email.trim().toLowerCase()},
+    );
+  }
+
+  /// Restablecer contraseña con el token recibido por email.
+  Future<Response> resetPassword(String token, String newPassword) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = _dummyService.resetPassword(token, newPassword);
+      return _createDummyResponse(data);
+    }
+    return await _dio.post(
+      '/auth/reset-password',
+      data: {'token': token.trim(), 'newPassword': newPassword},
     );
   }
 

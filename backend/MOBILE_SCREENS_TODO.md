@@ -16,7 +16,7 @@ La idea es que sirva como **lista de tareas** para el desarrollo y como contrato
 - **Auth**
   - [x] `LoginScreen` – Login del usuario.
   - [x] `RegisterScreen` – Registro de usuario.
-  - (Se omite `ForgotPasswordScreen` por falta de endpoint en el backend actual).
+  - [x] `ForgotPasswordScreen` – Recuperar contraseña (email → token). `ResetPasswordScreen` – Restablecer con código.
 
 - **Shell / navegación**
   - [x] `MainApp` / `AuthGate` – Decide entre login y dashboard según tokens.

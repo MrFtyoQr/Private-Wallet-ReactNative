@@ -42,11 +42,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
       // Cargar uso de IA
       final usageResponse = await _apiService.getAIUsage();
       if (usageResponse.statusCode == 200) {
-        // Formato dummy: {'statusCode': 200, 'data': {...}}
-        final usageData = usageResponse.data['data'] ?? usageResponse.data;
+        final raw = usageResponse.data['data'] ?? usageResponse.data;
+        final usageData = (raw is Map && raw['usage'] != null) ? raw['usage'] : raw;
         setState(() {
-          _used = usageData['used'] ?? 0;
-          _limit = usageData['limit'] ?? 10;
+          _used = (usageData['used'] is int) ? usageData['used'] as int : (int.tryParse(usageData['used']?.toString() ?? '') ?? 0);
+          _limit = (usageData['limit'] is int) ? usageData['limit'] as int : (int.tryParse(usageData['limit']?.toString() ?? '') ?? 10);
         });
       }
 

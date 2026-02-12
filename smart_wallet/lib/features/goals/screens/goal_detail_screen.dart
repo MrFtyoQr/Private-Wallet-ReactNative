@@ -23,6 +23,9 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
   bool _isUpdating = false;
   String? _planText;
 
+  static double _parseDouble(dynamic v) => (double.tryParse(v?.toString() ?? '') ?? 0.0);
+  static int? _parseInt(dynamic v) => v == null ? null : int.tryParse(v.toString());
+
   Future<void> _deleteGoal() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -184,11 +187,24 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     setState(() => _isUpdating = true);
     try {
       final response = await _apiService.getGoalPlan(widget.goal.id);
-      if (response.statusCode == 200) {
-        final data = response.data['data'] ?? response.data;
-        final monthly = data['monthlyAmount'] as double? ?? 0.0;
-        final daysRemaining = data['daysRemaining'] as int? ?? 0;
-        final remaining = data['remaining'] as double? ?? 0.0;
+      if (response.statusCode == 200 && mounted) {
+        final raw = response.data is Map ? response.data as Map<String, dynamic> : null;
+        final data = raw?['data'] as Map<String, dynamic>? ?? raw;
+        // Backend devuelve data.savingsPlan; dummy devuelve data.monthlyAmount, etc.
+        final savingsPlan = data?['savingsPlan'] as Map<String, dynamic>?;
+        double remaining;
+        int daysRemaining;
+        double monthly;
+        if (savingsPlan != null) {
+          remaining = _parseDouble(savingsPlan['remainingAmount']);
+          daysRemaining = _parseInt(savingsPlan['daysRemaining']) ?? 0;
+          final suggestions = savingsPlan['suggestions'] as Map<String, dynamic>?;
+          monthly = suggestions != null ? _parseDouble(suggestions['monthly']) : (daysRemaining > 0 ? remaining / daysRemaining * 30 : 0.0);
+        } else {
+          remaining = _parseDouble(data?['remaining']);
+          daysRemaining = _parseInt(data?['daysRemaining']) ?? 0;
+          monthly = _parseDouble(data?['monthlyAmount']);
+        }
         setState(() {
           _planText =
               'Te faltan ${Helpers.formatCurrency(remaining)}.\n'
@@ -293,22 +309,29 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _isUpdating ? null : _updateProgress,
+                  onPressed: (_isUpdating || widget.goal.status == 'completed') ? null : _updateProgress,
                   icon: const Icon(Icons.add),
                   label: const Text('Actualizar progreso'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _isUpdating ? null : () => _changeStatus('completed'),
+                  onPressed: (_isUpdating || widget.goal.status == 'completed') ? null : () => _changeStatus('completed'),
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Marcar completada'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _isUpdating ? null : () => _changeStatus('paused'),
+                  onPressed: (_isUpdating || widget.goal.status == 'completed' || widget.goal.status == 'paused') ? null : () => _changeStatus('paused'),
                   icon: const Icon(Icons.pause_circle_outline),
                   label: const Text('Pausar'),
                 ),
+                if (widget.goal.status == 'paused')
+                  ElevatedButton.icon(
+                    onPressed: _isUpdating ? null : () => _changeStatus('active'),
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: const Text('Reanudar'),
+                  ),
                 TextButton(
                   onPressed: _isUpdating ? null : _loadPlan,
                   child: const Text('Ver plan sugerido'),

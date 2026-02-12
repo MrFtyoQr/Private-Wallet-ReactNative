@@ -14,6 +14,7 @@ import 'package:smart_wallet/features/analytics/screens/reports_screen.dart';
 import 'package:smart_wallet/features/auth/screens/forgot_password_screen.dart';
 import 'package:smart_wallet/features/auth/screens/login_screen.dart';
 import 'package:smart_wallet/features/auth/screens/register_screen.dart';
+import 'package:smart_wallet/features/auth/screens/reset_password_screen.dart';
 import 'package:smart_wallet/features/dashboard/screens/dashboard_screen.dart';
 import 'package:smart_wallet/shared/widgets/main_navigation.dart';
 import 'package:smart_wallet/features/goals/screens/add_goal_screen.dart';
@@ -66,6 +67,7 @@ class SmartWalletApp extends StatelessWidget {
             LoginScreen.routeName: (_) => const LoginScreen(),
             RegisterScreen.routeName: (_) => const RegisterScreen(),
             ForgotPasswordScreen.routeName: (_) => const ForgotPasswordScreen(),
+            ResetPasswordScreen.routeName: (_) => const ResetPasswordScreen(),
             DashboardScreen.routeName: (_) => const DashboardScreen(),
             TransactionsScreen.routeName: (_) => const TransactionsScreen(),
             AddTransactionScreen.routeName: (_) => const AddTransactionScreen(),

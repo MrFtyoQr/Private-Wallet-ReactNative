@@ -38,9 +38,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _paymentService.getSubscriptionInfo(),
       ]);
       if (!mounted) return;
+      final data0 = (responses[0] as dynamic)?.data;
+      final profileMap = data0 is Map ? (data0['data'] ?? data0) : null;
       setState(() {
-        _profile = responses[0].data['data'] ?? responses[0].data;
-        _subscription = responses[1];
+        _profile = profileMap is Map<String, dynamic> ? profileMap : null;
+        _subscription = responses[1] is Map<String, dynamic> ? responses[1] as Map<String, dynamic>? : null;
         _loading = false;
       });
     } catch (_) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:smart_wallet/core/constants/app_constants.dart';
+import 'package:smart_wallet/core/models/transaction_model.dart';
 import 'package:smart_wallet/core/services/api_service.dart';
 import 'package:smart_wallet/core/services/auth_service.dart';
 import 'package:smart_wallet/core/utils/validators.dart';
@@ -43,32 +44,50 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is TransactionModel) {
+      // Pre-cargar datos cuando venimos en modo edición
+      _titleController.text = args.title;
+      _amountController.text = args.amount.toStringAsFixed(2);
+      _type = args.type == TransactionType.income ? 'income' : 'expense';
+      _category = args.category;
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthService>();
-      final userId = auth.currentUser?.id;
-
-      if (userId == null) {
-        throw Exception('Usuario no autenticado');
-      }
-
       final apiService = ApiService();
-      final response = await apiService.createTransaction({
+      final args = ModalRoute.of(context)?.settings.arguments;
+      final editing =
+          args is TransactionModel ? args : null;
+
+      final payload = {
         'title': _titleController.text.trim(),
         'amount': double.parse(_amountController.text.trim()),
         'category': _category,
         'type': _type,
-      });
+      };
 
-      if (response.statusCode == 201 && mounted) {
+      final response = editing == null
+          ? await apiService.createTransaction(payload)
+          : await apiService.updateTransaction(editing.id, payload);
+
+      final successCode = editing == null ? 201 : 200;
+
+      if (response.statusCode == successCode && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Transacción ${_type == 'income' ? 'ingresada' : 'registrada'} exitosamente',
+              editing == null
+                  ? 'Transacción ${_type == 'income' ? 'ingresada' : 'registrada'} exitosamente'
+                  : 'Transacción actualizada exitosamente',
             ),
             backgroundColor: Colors.green,
           ),

@@ -16,6 +16,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final PaymentService _paymentService = PaymentService();
   bool _loading = false;
   String? _errorMessage;
+  Map<String, dynamic>? _history;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final data = await _paymentService.getPaymentHistory();
+    if (!mounted) return;
+    setState(() {
+      _history = data;
+    });
+  }
 
   Future<void> _processPayment() async {
     setState(() {
@@ -129,6 +144,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 24),
+            if (_history != null)
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Historial de pagos',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Text(
+                              _history.toString(),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

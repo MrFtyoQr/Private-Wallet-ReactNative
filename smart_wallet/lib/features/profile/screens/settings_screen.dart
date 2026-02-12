@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:smart_wallet/core/services/auth_service.dart';
 import 'package:smart_wallet/core/services/theme_service.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -11,6 +12,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeService = context.watch<ThemeService>();
+    final auth = context.watch<AuthService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
@@ -29,6 +31,15 @@ class SettingsScreen extends StatelessWidget {
             subtitle: const Text('Recibir notificaciones de recordatorios'),
             onChanged: (_) {
               // TODO: Implementar notificaciones
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Cerrar sesión'),
+            onTap: () {
+              auth.logout();
+              Navigator.popUntil(context, ModalRoute.withName('/'));
             },
           ),
         ],

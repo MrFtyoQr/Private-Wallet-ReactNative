@@ -222,6 +222,15 @@ class ApiService {
     return await _dio.get('/ai/conversations');
   }
 
+  Future<Response> getConversationById(String conversationId) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getConversationById(conversationId);
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/ai/conversations/$conversationId');
+  }
+
   Future<Response> getFinancialAnalysis() async {
     if (ApiConstants.useDummyData) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -239,6 +248,15 @@ class ApiService {
       return _createDummyResponse(data);
     }
     return await _dio.get('/goals');
+  }
+
+  Future<Response> getGoalsSummary() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getGoalsSummary();
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/goals/summary');
   }
 
   Future<Response> createGoal(Map<String, dynamic> goal) async {
@@ -275,6 +293,30 @@ class ApiService {
       return _createDummyResponse(data);
     }
     return await _dio.get('/goals/$id/plan');
+  }
+
+  Future<Response> updateGoalProgress(String id, double amount) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.updateGoalProgress(id, amount);
+      return _createDummyResponse(data);
+    }
+    return await _dio.put(
+      '/goals/$id/progress',
+      data: {'amount': amount},
+    );
+  }
+
+  Future<Response> updateGoalStatus(String id, String status) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.updateGoalStatus(id, status);
+      return _createDummyResponse(data);
+    }
+    return await _dio.put(
+      '/goals/$id/status',
+      data: {'status': status},
+    );
   }
 
   // Market endpoints
@@ -321,7 +363,10 @@ class ApiService {
       final data = await _dummyService.getDashboardSummary();
       return _createDummyResponse(data);
     }
-    return await _dio.get('/analytics/dashboard');
+    return await _dio.get(
+      '/analytics/dashboard',
+      queryParameters: {'period': 30},
+    );
   }
 
   Future<Response> getTrends(String period) async {
@@ -343,6 +388,36 @@ class ApiService {
       return _createDummyResponse(data);
     }
     return await _dio.get('/analytics/categories');
+  }
+
+  Future<Response> getAnalyticsPredictions() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = await _dummyService.getAnalyticsPredictions();
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/analytics/predictions');
+  }
+
+  Future<Response> getMonthlyReport({
+    required int year,
+    required int month,
+  }) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      final data = await _dummyService.getMonthlyReport(
+        year: year,
+        month: month,
+      );
+      return _createDummyResponse(data);
+    }
+    return await _dio.get(
+      '/analytics/monthly-report',
+      queryParameters: {
+        'year': year,
+        'month': month,
+      },
+    );
   }
 
   // Reminders endpoints
@@ -397,7 +472,28 @@ class ApiService {
       final data = await _dummyService.getUpcomingReminders();
       return _createDummyResponse(data);
     }
-    return await _dio.get('/reminders/upcoming');
+    return await _dio.get(
+      '/reminders/upcoming',
+      queryParameters: {'days': 7},
+    );
+  }
+
+  Future<Response> getRemindersSummary() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getRemindersSummary();
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/reminders/summary');
+  }
+
+  Future<Response> getRemindersNotifications() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getRemindersNotifications();
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/reminders/notifications');
   }
 
   // Investment endpoints
@@ -426,6 +522,39 @@ class ApiService {
       return _createDummyResponse(data);
     }
     return await _dio.get('/investments/portfolio');
+  }
+
+  Future<Response> createInvestmentAlert({
+    required String symbol,
+    required double targetPrice,
+    required String direction,
+  }) async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = await _dummyService.createInvestmentAlert(
+        symbol: symbol,
+        targetPrice: targetPrice,
+        direction: direction,
+      );
+      return _createDummyResponse(data);
+    }
+    return await _dio.post(
+      '/investments/alert',
+      data: {
+        'symbol': symbol,
+        'target_price': targetPrice,
+        'direction': direction,
+      },
+    );
+  }
+
+  Future<Response> getInvestmentTrends() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final data = await _dummyService.getInvestmentTrends();
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/investments/trends');
   }
 
   // Payments endpoints
@@ -473,5 +602,23 @@ class ApiService {
       return _createDummyResponse(data);
     }
     return await _dio.get('/users/usage');
+  }
+
+  Future<Response> getUserProfile() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.getUserProfile();
+      return _createDummyResponse(data);
+    }
+    return await _dio.get('/users/profile');
+  }
+
+  Future<Response> cancelSubscription() async {
+    if (ApiConstants.useDummyData) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final data = await _dummyService.cancelSubscription();
+      return _createDummyResponse(data);
+    }
+    return await _dio.post('/payments/cancel');
   }
 }

@@ -196,7 +196,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
     final canSend = _used < _limit || _limit >= 999999;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat con IA')),
+      appBar: AppBar(
+        title: const Text('Chat con IA'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.insights_outlined),
+            tooltip: 'Ver análisis financiero',
+            onPressed: _isLoading ? null : _showFinancialAnalysis,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -280,6 +289,38 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showFinancialAnalysis() async {
+    try {
+      final response = await _apiService.getFinancialAnalysis();
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        final analysis = data['analysis'] as String? ??
+            'No se pudo obtener el análisis.';
+        if (!mounted) return;
+        showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Análisis financiero'),
+            content: Text(analysis),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error obteniendo análisis: $e'),
+        ),
+      );
+    }
   }
 }
 

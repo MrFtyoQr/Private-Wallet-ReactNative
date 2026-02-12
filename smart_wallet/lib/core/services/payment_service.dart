@@ -62,4 +62,16 @@ class PaymentService {
       return null;
     }
   }
+
+  Future<bool> cancelSubscription() async {
+    try {
+      final response = await _apiService.cancelSubscription();
+      return response.statusCode == 200 &&
+          (response.data['success'] == null ||
+              response.data['success'] == true);
+    } catch (e) {
+      print('Error cancelando suscripción: $e');
+      return false;
+    }
+  }
 }

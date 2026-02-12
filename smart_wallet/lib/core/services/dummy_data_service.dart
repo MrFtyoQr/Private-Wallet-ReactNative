@@ -164,6 +164,33 @@ class DummyDataService {
     };
   }
 
+  Future<Map<String, dynamic>> getGoalsSummary() async {
+    final goals = await _db.getAllGoals();
+    double targetTotal = 0.0;
+    double currentTotal = 0.0;
+    int completed = 0;
+
+    for (final goal in goals) {
+      final target = (goal['target_amount'] ?? 0.0) as double;
+      final current = (goal['current_amount'] ?? 0.0) as double;
+      targetTotal += target;
+      currentTotal += current;
+      if (goal['status'] == 'completed') {
+        completed++;
+      }
+    }
+
+    return {
+      'statusCode': 200,
+      'data': {
+        'totalTarget': targetTotal,
+        'totalCurrent': currentTotal,
+        'goalsCount': goals.length,
+        'completedCount': completed,
+      },
+    };
+  }
+
   Future<Map<String, dynamic>> createGoal(Map<String, dynamic> goal) async {
     final newGoal = {
       'id': 'goal_${DateTime.now().millisecondsSinceEpoch}',
@@ -247,6 +274,46 @@ class DummyDataService {
         'dailyAmount': dailyAmount,
         'monthlyAmount': dailyAmount * 30,
       },
+    };
+  }
+
+  Future<Map<String, dynamic>> updateGoalProgress(String id, double amount) async {
+    final goal = await _db.getGoal(id);
+    if (goal == null) {
+      return {
+        'statusCode': 404,
+        'message': 'Meta no encontrada',
+      };
+    }
+
+    final current = (goal['current_amount'] ?? 0.0) as double;
+    final target = (goal['target_amount'] ?? 0.0) as double;
+    final newCurrent = current + amount;
+
+    goal['current_amount'] = newCurrent > target ? target : newCurrent;
+    await _db.updateGoal(id, goal);
+
+    return {
+      'statusCode': 200,
+      'data': goal,
+    };
+  }
+
+  Future<Map<String, dynamic>> updateGoalStatus(String id, String status) async {
+    final goal = await _db.getGoal(id);
+    if (goal == null) {
+      return {
+        'statusCode': 404,
+        'message': 'Meta no encontrada',
+      };
+    }
+
+    goal['status'] = status;
+    await _db.updateGoal(id, goal);
+
+    return {
+      'statusCode': 200,
+      'data': goal,
     };
   }
 
@@ -341,6 +408,49 @@ class DummyDataService {
     return {
       'statusCode': 200,
       'data': reminders,
+    };
+  }
+
+  Future<Map<String, dynamic>> getRemindersSummary() async {
+    final reminders = await _db.getAllReminders();
+    int pending = 0;
+    int completed = 0;
+    int overdue = 0;
+    final today = DateTime.now();
+
+    for (final r in reminders) {
+      final status = r['status'] as String? ?? 'pending';
+      if (status == 'completed') {
+        completed++;
+      } else {
+        final dueDate = DateTime.parse(r['due_date'] as String);
+        if (dueDate.isBefore(today)) {
+          overdue++;
+        } else {
+          pending++;
+        }
+      }
+    }
+
+    return {
+      'statusCode': 200,
+      'data': {
+        'pending': pending,
+        'completed': completed,
+        'overdue': overdue,
+        'total': reminders.length,
+      },
+    };
+  }
+
+  Future<Map<String, dynamic>> getRemindersNotifications() async {
+    // Para modo dummy, reutilizamos los próximos recordatorios
+    final upcoming = await getUpcomingReminders();
+    return {
+      'statusCode': 200,
+      'data': {
+        'notifications': upcoming['data'],
+      },
     };
   }
 
@@ -460,6 +570,39 @@ class DummyDataService {
     };
   }
 
+  Map<String, dynamic> getAnalyticsPredictions() {
+    return {
+      'statusCode': 200,
+      'data': {
+        'summary': 'Se espera que tus gastos aumenten un 5% el próximo mes.',
+        'details': [
+          {
+            'category': 'Alimentación',
+            'projectedIncrease': 8.0,
+          },
+          {
+            'category': 'Transporte',
+            'projectedIncrease': 3.5,
+          },
+        ],
+      },
+    };
+  }
+
+  Map<String, dynamic> getMonthlyReport({
+    required int year,
+    required int month,
+  }) {
+    return {
+      'statusCode': 200,
+      'data': {
+        'year': year,
+        'month': month,
+        'summary': 'Reporte mensual dummy generado localmente.',
+      },
+    };
+  }
+
   // Investment endpoints (no cambian)
   Map<String, dynamic> getInvestmentAnalysis() {
     return {
@@ -492,6 +635,40 @@ class DummyDataService {
     };
   }
 
+  Map<String, dynamic> createInvestmentAlert({
+    required String symbol,
+    required double targetPrice,
+    required String direction,
+  }) {
+    return {
+      'statusCode': 200,
+      'data': {
+        'symbol': symbol,
+        'target_price': targetPrice,
+        'direction': direction,
+        'createdAt': DateTime.now().toIso8601String(),
+      },
+    };
+  }
+
+  Map<String, dynamic> getInvestmentTrends() {
+    return {
+      'statusCode': 200,
+      'data': [
+        {
+          'asset': 'Stocks',
+          'trend': 'bullish',
+          'change': 4.5,
+        },
+        {
+          'asset': 'Crypto',
+          'trend': 'mixed',
+          'change': 2.1,
+        },
+      ],
+    };
+  }
+
   Map<String, dynamic> getPortfolio() {
     return {
       'statusCode': 200,
@@ -521,6 +698,16 @@ class DummyDataService {
     return {
       'statusCode': 200,
       'data': [],
+    };
+  }
+
+  Map<String, dynamic> getConversationById(String conversationId) {
+    return {
+      'statusCode': 200,
+      'data': {
+        'conversationId': conversationId,
+        'messages': <Map<String, dynamic>>[],
+      },
     };
   }
 
@@ -578,6 +765,17 @@ class DummyDataService {
     };
   }
 
+  Map<String, dynamic> cancelSubscription() {
+    return {
+      'statusCode': 200,
+      'data': {
+        'plan': 'Free',
+        'status': 'cancelled',
+        'cancelledAt': DateTime.now().toIso8601String(),
+      },
+    };
+  }
+
   // Users endpoints (no cambian)
   Map<String, dynamic> getAIUsage() {
     return {
@@ -586,6 +784,21 @@ class DummyDataService {
         'used': 0,
         'limit': 10,
         'resetAt': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      },
+    };
+  }
+
+  Future<Map<String, dynamic>> getUserProfile() async {
+    // En modo dummy usamos un perfil básico basado en un usuario estático
+    return {
+      'statusCode': 200,
+      'data': {
+        'user': {
+          'userId': 'dummy_user',
+          'email': 'dummy_user@example.com',
+          'subscriptionType': 'free',
+          'aiQuestionsUsed': 0,
+        },
       },
     };
   }

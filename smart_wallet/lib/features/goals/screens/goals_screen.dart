@@ -20,6 +20,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   List<GoalModel> _goals = [];
   bool _isLoading = true;
   String? _errorMessage;
+  Map<String, dynamic>? _summary;
 
   @override
   void initState() {
@@ -59,6 +60,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
         print('✅ Metas parseadas: ${goalsData.length}');
 
+        // Cargar resumen de metas en paralelo
+        final summaryResponse = await _apiService.getGoalsSummary();
+
         setState(() {
           _goals = goalsData
               .map((json) {
@@ -72,6 +76,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
               })
               .whereType<GoalModel>()
               .toList();
+          if (summaryResponse.statusCode == 200) {
+            _summary = summaryResponse.data['data'] ?? summaryResponse.data;
+          } else {
+            _summary = null;
+          }
           _isLoading = false;
         });
       } else {
@@ -148,9 +157,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
               onRefresh: _loadGoals,
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: _goals.length,
+                itemCount: _goals.length + 1,
                 itemBuilder: (context, index) {
-                  final goal = _goals[index];
+                  if (index == 0) {
+                    return _buildSummaryCard(context);
+                  }
+                  final goal = _goals[index - 1];
                   return GoalCard(
                     goal: goal,
                     onTap: () async {
@@ -179,6 +191,38 @@ class _GoalsScreenState extends State<GoalsScreen> {
         },
         icon: const Icon(Icons.add),
         label: const Text('Nueva meta'),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(BuildContext context) {
+    if (_summary == null) {
+      return const SizedBox.shrink();
+    }
+
+    final totalTarget = (_summary!['totalTarget'] ?? 0.0) as double;
+    final totalCurrent = (_summary!['totalCurrent'] ?? 0.0) as double;
+    final goalsCount = (_summary!['goalsCount'] ?? 0) as int;
+    final completedCount = (_summary!['completedCount'] ?? 0) as int;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Resumen de metas',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text('Metas totales: $goalsCount'),
+            Text('Metas completadas: $completedCount'),
+            Text('Objetivo total: ${totalTarget.toStringAsFixed(0)}'),
+            Text('Ahorro actual: ${totalCurrent.toStringAsFixed(0)}'),
+          ],
+        ),
       ),
     );
   }

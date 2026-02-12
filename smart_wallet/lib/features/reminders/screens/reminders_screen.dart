@@ -17,8 +17,10 @@ class RemindersScreen extends StatefulWidget {
 class _RemindersScreenState extends State<RemindersScreen> {
   final ApiService _apiService = ApiService();
   List<ReminderModel> _reminders = [];
+  List<ReminderModel> _upcoming = [];
   bool _isLoading = true;
   String? _errorMessage;
+  Map<String, dynamic>? _summary;
 
   @override
   void initState() {
@@ -58,6 +60,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
         print('✅ Recordatorios parseados: ${remindersData.length}');
 
+        final upcomingResponse = await _apiService.getUpcomingReminders();
+        final summaryResponse = await _apiService.getRemindersSummary();
+
         setState(() {
           _reminders = remindersData
               .map((json) {
@@ -71,6 +76,30 @@ class _RemindersScreenState extends State<RemindersScreen> {
               })
               .whereType<ReminderModel>()
               .toList();
+          if (upcomingResponse.statusCode == 200 &&
+              upcomingResponse.data['data'] != null) {
+            final upcomingData = upcomingResponse.data['data'] as List<dynamic>;
+            _upcoming = upcomingData
+                .map((json) {
+                  try {
+                    return ReminderModel.fromJson(
+                      json as Map<String, dynamic>,
+                    );
+                  } catch (_) {
+                    return null;
+                  }
+                })
+                .whereType<ReminderModel>()
+                .toList();
+          } else {
+            _upcoming = [];
+          }
+          if (summaryResponse.statusCode == 200) {
+            _summary =
+                summaryResponse.data['data'] ?? summaryResponse.data;
+          } else {
+            _summary = null;
+          }
           _isLoading = false;
         });
       } else {
@@ -150,11 +179,24 @@ class _RemindersScreenState extends State<RemindersScreen> {
               onRefresh: _loadReminders,
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: _reminders.length,
-                itemBuilder: (context, index) => ReminderItem(
-                  model: _reminders[index],
-                  onComplete: () => _loadReminders(),
-                ),
+                itemCount: _reminders.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSummaryCard(context),
+                        const SizedBox(height: 16),
+                        _buildUpcomingSection(context),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  }
+                  return ReminderItem(
+                    model: _reminders[index - 1],
+                    onComplete: () => _loadReminders(),
+                  );
+                },
               ),
             ),
       floatingActionButton: FloatingActionButton.extended(
@@ -170,6 +212,91 @@ class _RemindersScreenState extends State<RemindersScreen> {
         icon: const Icon(Icons.add_alert),
         label: const Text('Nuevo recordatorio'),
       ),
+    );
+  }
+
+  Widget _buildSummaryCard(BuildContext context) {
+    if (_summary == null) return const SizedBox.shrink();
+
+    final pending = (_summary!['pending'] ?? 0) as int;
+    final completed = (_summary!['completed'] ?? 0) as int;
+    final overdue = (_summary!['overdue'] ?? 0) as int;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildSummaryChip(
+              context,
+              label: 'Pendientes',
+              value: pending,
+              color: Colors.amber,
+            ),
+            _buildSummaryChip(
+              context,
+              label: 'Completados',
+              value: completed,
+              color: Colors.green,
+            ),
+            _buildSummaryChip(
+              context,
+              label: 'Vencidos',
+              value: overdue,
+              color: Colors.red,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryChip(
+    BuildContext context, {
+    required String label,
+    required int value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 4),
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: color.withOpacity(0.15),
+          child: Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUpcomingSection(BuildContext context) {
+    if (_upcoming.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Próximos 7 días',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        ..._upcoming.take(3).map(
+              (r) => ReminderItem(
+                model: r,
+                onComplete: () => _loadReminders(),
+              ),
+            ),
+      ],
     );
   }
 }

@@ -20,6 +20,8 @@ class GoalDetailScreen extends StatefulWidget {
 class _GoalDetailScreenState extends State<GoalDetailScreen> {
   final ApiService _apiService = ApiService();
   bool _isDeleting = false;
+  bool _isUpdating = false;
+  String? _planText;
 
   Future<void> _deleteGoal() async {
     final confirmed = await showDialog<bool>(
@@ -84,6 +86,129 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     
     if (result == true && mounted) {
       Navigator.pop(context, true); // Retornar true para refrescar la lista
+    }
+  }
+
+  Future<void> _updateProgress() async {
+    final amountController = TextEditingController();
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Actualizar progreso'),
+        content: TextField(
+          controller: amountController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Monto a agregar',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final value = double.tryParse(amountController.text.trim());
+              Navigator.pop(context, value);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (amount == null || amount <= 0) return;
+
+    setState(() => _isUpdating = true);
+
+    try {
+      final response =
+          await _apiService.updateGoalProgress(widget.goal.id, amount);
+      if (response.statusCode == 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progreso actualizado'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar progreso: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
+  }
+
+  Future<void> _changeStatus(String status) async {
+    setState(() => _isUpdating = true);
+    try {
+      final response =
+          await _apiService.updateGoalStatus(widget.goal.id, status);
+      if (response.statusCode == 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Estado de la meta actualizado'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar estado: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
+  }
+
+  Future<void> _loadPlan() async {
+    setState(() => _isUpdating = true);
+    try {
+      final response = await _apiService.getGoalPlan(widget.goal.id);
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        final monthly = data['monthlyAmount'] as double? ?? 0.0;
+        final daysRemaining = data['daysRemaining'] as int? ?? 0;
+        final remaining = data['remaining'] as double? ?? 0.0;
+        setState(() {
+          _planText =
+              'Te faltan ${Helpers.formatCurrency(remaining)}.\n'
+              'Quedan $daysRemaining días. Deberías ahorrar aproximadamente '
+              '${Helpers.formatCurrency(monthly)} al mes para alcanzar tu meta.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar plan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
     }
   }
 
@@ -153,9 +278,43 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            const Text('Sugerencia AI'),
+            const Text('Plan de ahorro'),
             const SizedBox(height: 12),
-            const Text('Aparta 150 MXN cada semana para alcanzar tu meta en el tiempo establecido.'),
+            if (_planText != null)
+              Text(
+                _planText!,
+                style: Theme.of(context).textTheme.bodyMedium,
+              )
+            else
+              Text(
+                'Pulsa en "Ver plan sugerido" para obtener una recomendación.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _isUpdating ? null : _updateProgress,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Actualizar progreso'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _isUpdating ? null : () => _changeStatus('completed'),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Marcar completada'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _isUpdating ? null : () => _changeStatus('paused'),
+                  icon: const Icon(Icons.pause_circle_outline),
+                  label: const Text('Pausar'),
+                ),
+                TextButton(
+                  onPressed: _isUpdating ? null : _loadPlan,
+                  child: const Text('Ver plan sugerido'),
+                ),
+              ],
+            ),
             if (_isDeleting)
               const Center(
                 child: Padding(

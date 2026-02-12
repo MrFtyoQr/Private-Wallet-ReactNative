@@ -1,192 +1,178 @@
-## 🧾 Guía de uso del Backend con Postman
+## 🧾 Guía práctica para probar el backend con Postman
 
-Esta guía explica **paso a paso** cómo levantar el backend y cómo probar **todas las APIs principales** usando Postman.
-
----
-
-## 1. Requisitos previos
-
-- **Node.js** instalado (versión 18+ recomendada).
-- **MySQL** corriendo en tu máquina (puerto 3306 por defecto).
-- **Postman** instalado.
-
-Base de datos por defecto (puedes cambiarla, pero esta es la referencia del proyecto):
-
-- Host: `localhost`
-- Puerto: `3306`
-- Usuario: `root`
-- Contraseña: `654321`
-- Base de datos: `private_wallet_db`
-
-> El backend crea automáticamente la base de datos y tablas si la conexión es correcta.
+Esta guía está pensada para **copiar y pegar directamente en Postman**.  
+Todas las URLs usan `http://localhost:5001`, que es donde levanta el backend por defecto.
 
 ---
 
-## 2. Configurar variables de entorno (`.env`)
+## 1. Preparar el backend
 
-En la carpeta `backend/`, crea un archivo `.env` con al menos:
+1. Abre una terminal en la carpeta `backend`:
+   ```bash
+   cd backend
+   ```
+2. Instala dependencias:
+   ```bash
+   npm install
+   ```
+3. Crea el archivo `.env` (en `backend/.env`) con al menos:
+   ```env
+   DATABASE_URL=mysql://root:654321@localhost:3306/private_wallet_db
 
-```env
-# Opción A: URL completa
-DATABASE_URL=mysql://root:654321@localhost:3306/private_wallet_db
+   JWT_SECRET=tu_clave_jwt_segura
+   JWT_REFRESH_SECRET=tu_clave_refresh_segura
 
-# JWT (obligatorio)
-JWT_SECRET=tu_clave_jwt_segura
-JWT_REFRESH_SECRET=tu_clave_refresh_segura
+   # Opcionales
+   OPENROUTER=tu_api_key_openrouter
+   STRIPE_SECRET_KEY=tu_clave_stripe
+   ```
+4. Arranca el servidor:
+   ```bash
+   npm run dev
+   ```
+5. Verás algo como:
+   ```text
+   Database initialized successfully
+   Server is up and running on http://0.0.0.0:5001
+   ```
 
-# CORS (opcional, para permitir tu app móvil/web)
-CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+---
 
-# IA (opcional pero recomendado si quieres probar AI)
-OPENROUTER=tu_api_key_openrouter
+## 2. Preparar Postman (opcional pero recomendado)
 
-# Stripe (opcional; si no está configurado, los endpoints responden con error controlado)
-STRIPE_SECRET_KEY=tu_clave_stripe
+En Postman, crea un **Environment** y añade:
+
+- `baseUrl` = `http://localhost:5001`
+- `accessToken` = *(se llenará después del login)*
+- `refreshToken` = *(opcional)*
+
+En los ejemplos de abajo usaré **URLs completas** para que puedas copiarlas tal cual,  
+pero si quieres, puedes cambiar `http://localhost:5001` por `{{baseUrl}}`.
+
+### Headers comunes
+
+Para requests con JSON:
+
+- `Content-Type: application/json`
+
+Para rutas protegidas (requieren JWT):
+
+- `Authorization: Bearer <ACCESS_TOKEN>`
+
+---
+
+## 3. Paso 1 – Healthcheck (sin autenticación)
+
+Para comprobar que el backend está vivo:
+
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/health`
+
+No necesita headers especiales.  
+Respuesta esperada:
+
+```json
+{ "status": "ok" }
 ```
 
-Si no quieres usar `DATABASE_URL`, puedes usar las variables discretas:
-
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=654321
-DB_NAME=private_wallet_db
-```
-
 ---
 
-## 3. Instalar dependencias y arrancar el servidor
+## 4. Paso 2 – Registro (`POST /api/auth/register`)
 
-Desde la carpeta `backend/`:
-
-```bash
-npm install
-npm run dev   # desarrollo (nodemon)
-# o
-npm start     # producción simple
-```
-
-Por defecto, el servidor escucha en:
-
-- `http://localhost:5001`
-
-En producción (`NODE_ENV=production`) también se activan los **cron jobs** para datos de mercado y limpieza de logs.
-
----
-
-## 4. Configurar Postman
-
-### 4.1. Crear variables de entorno
-
-En Postman crea un **Environment** con estas variables:
-
-- **`baseUrl`** = `http://localhost:5001`
-- **`accessToken`** = *(se rellenará después del login)*
-- **`refreshToken`** = *(opcional, para probar refresh)*
-
-### 4.2. Headers comunes
-
-En todas las requests con JSON añade:
-
-- Header: `Content-Type: application/json`
-
-En todas las rutas protegidas (JWT) añade además:
-
-- Header: `Authorization: Bearer {{accessToken}}`
-
----
-
-## 5. Flujo básico de autenticación
-
-### 5.1. Registro – `POST /api/auth/register`
-
-- **URL**: `{{baseUrl}}/api/auth/register`
-- **Método**: `POST`
-- **Body (JSON)**:
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/auth/register`  
+- **Headers**:
+  - `Content-Type: application/json`
+- **Body (raw / JSON)**:
 
 ```json
 {
-  "user_id": "usuario_demo",
-  "email": "demo@example.com",
-  "password": "password_seguro"
+  "user_id": "user_test",
+  "email": "user_test@example.com",
+  "password": "Password123"
 }
 ```
 
-### 5.2. Login – `POST /api/auth/login`
-
-- **URL**: `{{baseUrl}}/api/auth/login`
-- **Método**: `POST`
-- **Body (JSON)**:
+Respuesta esperada: `201` con un JSON tipo:
 
 ```json
 {
-  "user_id": "usuario_demo",
-  "password": "password_seguro"
+  "success": true,
+  "data": {
+    "user": { ... },
+    "accessToken": "....",
+    "refreshToken": "...."
+  }
+}
+```
+
+---
+
+## 5. Paso 3 – Login (`POST /api/auth/login`) y guardar tokens
+
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/auth/login`  
+- **Headers**:
+  - `Content-Type: application/json`
+- **Body**:
+
+```json
+{
+  "user_id": "user_test",
+  "password": "Password123"
 }
 ```
 
 En la respuesta copia:
 
-- `data.accessToken` → variable `accessToken` en Postman.
-- `data.refreshToken` → variable `refreshToken` (opcional).
+- `data.accessToken` → úsalo como `<ACCESS_TOKEN>` en los siguientes ejemplos.
+- `data.refreshToken` → opcional, para renovar el token.
 
-### 5.3. Refresh token – `POST /api/auth/refresh`
+Si usas variables de Postman:
 
-- **URL**: `{{baseUrl}}/api/auth/refresh`
-- **Método**: `POST`
-- **Body (JSON)**:
-
-```json
-{
-  "refreshToken": "{{refreshToken}}"
-}
-```
-
-Actualiza `accessToken` en Postman con el nuevo valor.
+- `accessToken` = valor de `data.accessToken`
+- `refreshToken` = valor de `data.refreshToken`
 
 ---
 
-## 6. Usuarios (`/api/users`) – requiere JWT
+## 6. Paso 4 – Probar primera ruta protegida (`GET /api/users/profile`)
 
-### 6.1. Perfil – `GET /api/users/profile`
-
-- **URL**: `{{baseUrl}}/api/users/profile`
-- **Método**: `GET`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/users/profile`  
 - **Headers**:
-  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 6.2. Actualizar suscripción – `PUT /api/users/subscription`
-
-- **URL**: `{{baseUrl}}/api/users/subscription`
-- **Método**: `PUT`
-- **Body (JSON)**:
+Respuesta esperada: `200` con datos del usuario:
 
 ```json
 {
-  "subscriptionType": "premium"
+  "success": true,
+  "data": {
+    "user": {
+      "userId": "user_test",
+      "email": "user_test@example.com",
+      "subscriptionType": "free",
+      "aiQuestionsUsed": 0
+    }
+  }
 }
 ```
 
-### 6.3. Uso de IA – `GET /api/users/usage`
-
-- **URL**: `{{baseUrl}}/api/users/usage`
-- **Método**: `GET`
+Si esto funciona, la autenticación JWT está bien configurada.
 
 ---
 
-## 7. Transacciones (`/api/transactions`) – requiere JWT
+## 7. Transacciones (`/api/transactions`)
 
-### 7.1. Listar – `GET /api/transactions`
+### 7.1. Crear transacción
 
-- **URL**: `{{baseUrl}}/api/transactions`
-- **Método**: `GET`
-
-### 7.2. Crear – `POST /api/transactions`
-
-- **URL**: `{{baseUrl}}/api/transactions`
-- **Método**: `POST`
-- **Body (JSON)**:
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/transactions`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -197,25 +183,40 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 7.3. Resumen – `GET /api/transactions/summary`
+### 7.2. Listar transacciones
 
-- **URL**: `{{baseUrl}}/api/transactions/summary`
-- **Método**: `GET`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/transactions`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 7.4. Eliminar – `DELETE /api/transactions/:id`
+### 7.3. Resumen (balance / ingresos / gastos)
 
-- **URL**: `{{baseUrl}}/api/transactions/1` (cambia `1` por el ID real).
-- **Método**: `DELETE`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/transactions/summary`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+
+### 7.4. Eliminar transacción
+
+- **Method**: `DELETE`  
+- **URL**: `http://localhost:5001/api/transactions/ID`  
+  (reemplaza `ID` por el id real de la transacción)  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
-## 8. Metas (`/api/goals`) – requiere JWT
+## 8. Metas (`/api/goals`)
 
-### 8.1. Crear meta – `POST /api/goals`
+### 8.1. Crear meta
 
-- **URL**: `{{baseUrl}}/api/goals`
-- **Método**: `POST`
-- **Body (JSON)**:
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/goals`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -226,17 +227,22 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 8.2. Listar metas – `GET /api/goals`
+### 8.2. Listar metas
 
-- **URL**: `{{baseUrl}}/api/goals`
-- **Método**: `GET`
-- Query opcional: `?status=active|completed|paused`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/goals`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Opcional (query)**: `?status=active` / `completed` / `paused`
 
-### 8.3. Actualizar progreso – `PUT /api/goals/:id/progress`
+### 8.3. Actualizar progreso
 
-- **URL**: `{{baseUrl}}/api/goals/1/progress`
-- **Método**: `PUT`
-- **Body (JSON)**:
+- **Method**: `PUT`  
+- **URL**: `http://localhost:5001/api/goals/ID/progress`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -244,16 +250,21 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 8.4. Plan de ahorro – `GET /api/goals/:id/plan`
+### 8.4. Plan de ahorro sugerido
 
-- **URL**: `{{baseUrl}}/api/goals/1/plan`
-- **Método**: `GET`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/goals/ID/plan`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 8.5. Cambiar estado – `PUT /api/goals/:id/status`
+### 8.5. Cambiar estado de meta
 
-- **URL**: `{{baseUrl}}/api/goals/1/status`
-- **Método**: `PUT`
-- **Body (JSON)**:
+- **Method**: `PUT`  
+- **URL**: `http://localhost:5001/api/goals/ID/status`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -261,24 +272,32 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 8.6. Eliminar – `DELETE /api/goals/:id`
+### 8.6. Eliminar meta
 
-- **URL**: `{{baseUrl}}/api/goals/1`
-- **Método**: `DELETE`
+- **Method**: `DELETE`  
+- **URL**: `http://localhost:5001/api/goals/ID`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 8.7. Resumen – `GET /api/goals/summary`
+### 8.7. Resumen de metas
 
-- **URL**: `{{baseUrl}}/api/goals/summary`
-- **Método**: `GET`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/goals/summary`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
-## 9. Recordatorios (`/api/reminders`) – requiere JWT
+## 9. Recordatorios (`/api/reminders`)
 
-### 9.1. Crear – `POST /api/reminders`
+### 9.1. Crear recordatorio
 
-- **URL**: `{{baseUrl}}/api/reminders`
-- **Body (JSON)**:
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/reminders`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -292,23 +311,36 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 9.2. Listar – `GET /api/reminders`
+### 9.2. Listar recordatorios
 
-- **URL**: `{{baseUrl}}/api/reminders`
-- Query opcional: `?status=pending|completed|overdue`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/reminders`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Opcional**: `?status=pending|completed|overdue`
 
-### 9.3. Próximos – `GET /api/reminders/upcoming`
+### 9.3. Próximos recordatorios
 
-- **URL**: `{{baseUrl}}/api/reminders/upcoming?days=7`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/reminders/upcoming?days=7`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 9.4. Completar – `PUT /api/reminders/:id/complete`
+### 9.4. Marcar como completado
 
-- **URL**: `{{baseUrl}}/api/reminders/1/complete`
+- **Method**: `PUT`  
+- **URL**: `http://localhost:5001/api/reminders/ID/complete`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 9.5. Actualizar – `PUT /api/reminders/:id`
+### 9.5. Actualizar recordatorio
 
-- **URL**: `{{baseUrl}}/api/reminders/1`
-- **Body (JSON)** (ejemplo):
+- **Method**: `PUT`  
+- **URL**: `http://localhost:5001/api/reminders/ID`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body (ejemplo)**:
 
 ```json
 {
@@ -317,28 +349,41 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 9.6. Eliminar – `DELETE /api/reminders/:id`
+### 9.6. Eliminar recordatorio
 
-- **URL**: `{{baseUrl}}/api/reminders/1`
+- **Method**: `DELETE`  
+- **URL**: `http://localhost:5001/api/reminders/ID`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 9.7. Notificaciones – `GET /api/reminders/notifications`
+### 9.7. Recordatorios para notificación
 
-- **URL**: `{{baseUrl}}/api/reminders/notifications`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/reminders/notifications`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 9.8. Resumen – `GET /api/reminders/summary`
+### 9.8. Resumen de recordatorios
 
-- **URL**: `{{baseUrl}}/api/reminders/summary`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/reminders/summary`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
-## 10. IA (`/api/ai`) – requiere JWT
+## 10. IA (`/api/ai`)
 
-> Para usuarios **free** hay límites de uso, controlados por `checkAIUsage`.
+> Ten en cuenta que los usuarios **free** tienen límites de uso (controlados por `checkAIUsage`).
 
-### 10.1. Chat – `POST /api/ai/chat`
+### 10.1. Chat con IA
 
-- **URL**: `{{baseUrl}}/api/ai/chat`
-- **Body (JSON)**:
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/ai/chat`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -347,105 +392,183 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 10.2. Listar conversaciones – `GET /api/ai/conversations`
+### 10.2. Listar conversaciones
 
-- **URL**: `{{baseUrl}}/api/ai/conversations`
-- Query opcional: `?conversationId=<id>`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/ai/conversations`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Opcional**: `?conversationId=<ID>`
 
-### 10.3. Conversación por ID – `GET /api/ai/conversations/:conversationId`
+### 10.3. Obtener una conversación por ID
 
-- **URL**: `{{baseUrl}}/api/ai/conversations/<conversationId>`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/ai/conversations/CONVERSATION_ID`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 10.4. Análisis financiero – `GET /api/ai/analysis`
+### 10.4. Análisis financiero
 
-- **URL**: `{{baseUrl}}/api/ai/analysis`
-
----
-
-## 11. Analytics (`/api/analytics`) – requiere JWT
-
-### 11.1. Dashboard – `GET /api/analytics/dashboard`
-
-- **URL**: `{{baseUrl}}/api/analytics/dashboard?period=30`
-
-### 11.2. Tendencias – `GET /api/analytics/trends`
-
-- **URL**: `{{baseUrl}}/api/analytics/trends?period=month`
-- O:
-- **URL**: `{{baseUrl}}/api/analytics/trends?startDate=2025-01-01&endDate=2025-02-01`
-
-### 11.3. Por categorías – `GET /api/analytics/categories`
-
-- **URL**: `{{baseUrl}}/api/analytics/categories?period=30`
-
-### 11.4. Predicciones – `GET /api/analytics/predictions`
-
-- **URL**: `{{baseUrl}}/api/analytics/predictions`
-
-### 11.5. Reporte mensual – `GET /api/analytics/monthly-report`
-
-- **URL**: `{{baseUrl}}/api/analytics/monthly-report?year=2025&month=2`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/ai/analysis`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
-## 12. Mercado (`/api/market`) – requiere JWT
+## 11. Analytics (`/api/analytics`)
 
-### 12.1. Criptomonedas – `GET /api/market/crypto`
+### 11.1. Dashboard
 
-- **URL**: `{{baseUrl}}/api/market/crypto`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/analytics/dashboard?period=30`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 12.2. Acciones – `GET /api/market/stocks`
+### 11.2. Tendencias
 
-- **URL**: `{{baseUrl}}/api/market/stocks`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/analytics/trends?period=month`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 12.3. Análisis de mercado – `GET /api/market/analysis`
+O bien, con rango de fechas:
 
-- **URL**: `{{baseUrl}}/api/market/analysis`
+- **URL**: `http://localhost:5001/api/analytics/trends?startDate=2025-01-01&endDate=2025-02-01`
 
-### 12.4. Análisis personalizado – `GET /api/market/personalized-analysis`
+### 11.3. Análisis por categorías
 
-- **URL**: `{{baseUrl}}/api/market/personalized-analysis`
-- Solo disponible para suscripciones avanzadas (`premium+`).
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/analytics/categories?period=30`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+
+### 11.4. Predicciones
+
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/analytics/predictions`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+
+### 11.5. Reporte mensual
+
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/analytics/monthly-report?year=2025&month=2`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
-## 13. Inversiones (`/api/investments`) – requiere JWT
+## 12. Mercado (`/api/market`)
 
-### 13.1. Análisis – `GET /api/investments/analysis`
+### 12.1. Criptomonedas
 
-- **URL**: `{{baseUrl}}/api/investments/analysis`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/market/crypto`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 13.2. Recomendación personalizada – `POST /api/investments/recommend`
+### 12.2. Acciones
 
-- **URL**: `{{baseUrl}}/api/investments/recommend`
-- **Body (JSON)**: dependerá de cómo quieras consumirlo; como mínimo puedes enviar información del perfil o símbolo.
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/market/stocks`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 13.3. Portfolio – `GET /api/investments/portfolio`
+### 12.3. Análisis de mercado
 
-- **URL**: `{{baseUrl}}/api/investments/portfolio`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/market/analysis`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 13.4. Alertas – `POST /api/investments/alert`
+### 12.4. Análisis personalizado
 
-- **URL**: `{{baseUrl}}/api/investments/alert`
-- **Body (JSON)**: define condiciones de alerta (símbolo, precio objetivo, etc.).
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/market/personalized-analysis`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 13.5. Tendencias – `GET /api/investments/trends`
+> Algunas funciones avanzadas pueden requerir suscripciones como `premium` o `premium+`.
 
-- **URL**: `{{baseUrl}}/api/investments/trends`
+---
+
+## 13. Inversiones (`/api/investments`)
+
+### 13.1. Análisis de inversiones
+
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/investments/analysis`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+
+### 13.2. Recomendación personalizada
+
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/investments/recommend`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body (ejemplo básico)**:
+
+```json
+{
+  "symbol": "AAPL",
+  "notes": "Perfil moderado, horizonte 3 años"
+}
+```
+
+### 13.3. Portfolio del usuario
+
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/investments/portfolio`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+
+### 13.4. Alertas de inversión
+
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/investments/alert`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body (ejemplo)**:
+
+```json
+{
+  "symbol": "BTC",
+  "target_price": 60000,
+  "direction": "above"
+}
+```
+
+### 13.5. Tendencias de inversión
+
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/investments/trends`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
 ## 14. Pagos (`/api/payments`)
 
-### 14.1. Webhook Stripe – `POST /api/payments/webhook/stripe`
+### 14.1. Webhook Stripe (solo para integración con Stripe)
 
-- **Uso**: Solo para Stripe, **sin JWT**.
-- En Postman normalmente no lo necesitas salvo pruebas específicas de webhook.
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/payments/webhook/stripe`  
+- **Auth**: sin JWT (lo usa Stripe).
 
-### 14.2. Crear pago – `POST /api/payments/create` (JWT)
+En Postman normalmente no necesitas tocar esto salvo pruebas específicas.
 
-- **URL**: `{{baseUrl}}/api/payments/create`
-- **Body (JSON)**:
+### 14.2. Crear pago
+
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/payments/create`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
+- **Body**:
 
 ```json
 {
@@ -455,55 +578,44 @@ Actualiza `accessToken` en Postman con el nuevo valor.
 }
 ```
 
-### 14.3. Confirmar pago – `POST /api/payments/confirm` (JWT)
+### 14.3. Confirmar pago
 
-- **URL**: `{{baseUrl}}/api/payments/confirm`
-- Body y detalles dependen de la implementación de `paymentsController.js`.
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/payments/confirm`  
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 14.4. Historial – `GET /api/payments/history` (JWT)
+### 14.4. Historial de pagos
 
-- **URL**: `{{baseUrl}}/api/payments/history`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/payments/history`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 14.5. Info de suscripción – `GET /api/payments/subscription` (JWT)
+### 14.5. Información de suscripción
 
-- **URL**: `{{baseUrl}}/api/payments/subscription`
+- **Method**: `GET`  
+- **URL**: `http://localhost:5001/api/payments/subscription`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
-### 14.6. Cancelar suscripción – `POST /api/payments/cancel` (JWT)
+### 14.6. Cancelar suscripción
 
-- **URL**: `{{baseUrl}}/api/payments/cancel`
-
----
-
-## 15. Salud del servidor
-
-### 15.1. Healthcheck – `GET /api/health`
-
-- **URL**: `{{baseUrl}}/api/health`
-- **Método**: `GET`
-- **Auth**: NO
-- Respuesta esperada:
-
-```json
-{
-  "status": "ok"
-}
-```
+- **Method**: `POST`  
+- **URL**: `http://localhost:5001/api/payments/cancel`  
+- **Headers**:
+  - `Authorization: Bearer <ACCESS_TOKEN>`
 
 ---
 
-## 16. Resumen de flujo recomendado en Postman
+## 15. Resumen de flujo recomendado
 
-1. **Levantar backend** (`npm run dev` en `backend/`).
-2. **Healthcheck**: `GET {{baseUrl}}/api/health`.
-3. **Registro**: `POST {{baseUrl}}/api/auth/register`.
-4. **Login**: `POST {{baseUrl}}/api/auth/login` → guardar `accessToken`/`refreshToken`.
-5. **Probar módulos principales**:
-   - Transacciones.
-   - Metas.
-   - Recordatorios.
-   - IA.
-   - Analytics y mercado.
-6. Opcional: pagos y rutas avanzadas de inversiones.
+1. **Levantar backend** con `npm run dev` en `backend/`.
+2. Probar `GET http://localhost:5001/api/health`.
+3. Hacer **registro** y **login** para obtener `accessToken`.
+4. Probar `GET http://localhost:5001/api/users/profile` con el token.
+5. Ir probando módulos: transacciones, metas, recordatorios, IA, analytics, mercado, inversiones y pagos.
 
-Con este archivo deberías poder **importar fácilmente las rutas en Postman (copiando las URLs)** y seguir el flujo completo del backend sin mirar el código.
+Con este archivo puedes **copiar y pegar directamente** cada bloque en Postman y verificar que todo el backend responde como se espera.
 

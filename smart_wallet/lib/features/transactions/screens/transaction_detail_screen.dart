@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_wallet/core/models/transaction_model.dart';
 import 'package:smart_wallet/core/services/api_service.dart';
 import 'package:smart_wallet/core/utils/helpers.dart';
+import 'package:smart_wallet/features/transactions/screens/add_transaction_screen.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   const TransactionDetailScreen({super.key, required this.model});
@@ -79,6 +80,22 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       appBar: AppBar(
         title: const Text('Detalle de transacción'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _isDeleting
+                ? null
+                : () async {
+                    final result = await Navigator.pushNamed(
+                      context,
+                      AddTransactionScreen.routeName,
+                      arguments: widget.model,
+                    );
+                    if (result == true && mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  },
+            tooltip: 'Editar',
+          ),
           IconButton(
             icon: _isDeleting
                 ? const SizedBox(
